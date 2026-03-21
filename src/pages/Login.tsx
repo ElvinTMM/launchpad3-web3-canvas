@@ -16,14 +16,19 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success("Logged in successfully");
-      navigate("/dashboard");
+      return;
     }
+    if (data.user && !data.user.email_confirmed_at) {
+      toast.error("Please verify your email first. Check your inbox for the confirmation link.");
+      await supabase.auth.signOut();
+      return;
+    }
+    toast.success("Logged in successfully");
+    navigate("/dashboard");
   };
 
   return (
