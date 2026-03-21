@@ -1,12 +1,11 @@
 import { createConfig, http } from "wagmi";
-import { mainnet, bsc, polygon } from "wagmi/chains";
+import { mainnet, bsc, polygon, base } from "wagmi/chains";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
-// Replace with your WalletConnect Cloud project ID from https://cloud.walletconnect.com
-const WALLETCONNECT_PROJECT_ID = "DEMO_PROJECT_ID";
+const WALLETCONNECT_PROJECT_ID = "f456c1a3a156fa401463b7d0ee899d5e";
 
 export const wagmiConfig = createConfig({
-  chains: [mainnet, bsc, polygon],
+  chains: [mainnet, bsc, polygon, base],
   connectors: [
     injected(),
     walletConnect({ projectId: WALLETCONNECT_PROJECT_ID }),
@@ -16,5 +15,6 @@ export const wagmiConfig = createConfig({
     [mainnet.id]: http(),
     [bsc.id]: http(),
     [polygon.id]: http(),
+    [base.id]: http(),
   },
 });
