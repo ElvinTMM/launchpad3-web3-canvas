@@ -21,7 +21,21 @@ const Dashboard = () => {
       navigate("/login");
       return;
     }
-    const fetchSites = async () => {
+
+    const checkSubscriptionAndLoadSites = async () => {
+      // Check for active subscription
+      const { data: subs } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .limit(1);
+
+      if (!subs || subs.length === 0) {
+        navigate("/pricing");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("sites")
         .select("*")
@@ -33,7 +47,8 @@ const Dashboard = () => {
       }
       setLoading(false);
     };
-    fetchSites();
+
+    checkSubscriptionAndLoadSites();
   }, [user, navigate]);
 
   const handleLogout = async () => {
