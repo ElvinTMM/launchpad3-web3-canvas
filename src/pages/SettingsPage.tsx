@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Rocket, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import PaymentModal from "@/components/PaymentModal";
 
 const SettingsPage = () => {
+  const [paymentOpen, setPaymentOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border glass-strong sticky top-0 z-50">
@@ -42,9 +46,11 @@ const SettingsPage = () => {
         <div className="glass rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
           <p className="text-sm text-muted-foreground">You are on the <span className="text-primary font-medium">Free Trial</span> — 12 days remaining.</p>
-          <Button variant="gradient">Upgrade Plan</Button>
+          <Button variant="gradient" onClick={() => setPaymentOpen(true)}>Upgrade Plan</Button>
         </div>
       </main>
+
+      <PaymentModal open={paymentOpen} onOpenChange={setPaymentOpen} />
     </div>
   );
 };
