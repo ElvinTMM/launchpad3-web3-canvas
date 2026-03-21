@@ -14,7 +14,7 @@ import { injected } from "wagmi/connectors";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
 // Treasury address - replace with your actual address
-const TREASURY_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+const TREASURY_ADDRESS = "0x2a613eeE5aA1f8A086c86f2EB80D662cDc87746b" as `0x${string}`;
 
 const ERC20_TRANSFER_ABI = [
   {
