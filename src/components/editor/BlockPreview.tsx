@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import type { Block } from "./types";
 import InlineEditable from "./InlineEditable";
+import WalletConnectPreview from "./WalletConnectPreview";
 
 interface Props {
   block: Block;
