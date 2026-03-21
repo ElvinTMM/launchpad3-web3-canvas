@@ -318,39 +318,54 @@ const Editor = () => {
           onClick={() => setSelectedId(null)}
         >
           <div
-            className="mx-auto transition-all duration-300 space-y-4"
-            style={{ maxWidth: viewportWidth }}
+            className={`mx-auto transition-all duration-300 ${
+              viewport === "mobile"
+                ? "border-[12px] border-muted-foreground/20 rounded-[2.5rem] shadow-2xl bg-background overflow-hidden"
+                : ""
+            }`}
+            style={{
+              maxWidth: viewport === "mobile" ? viewportWidth + 24 : viewportWidth,
+              ...(viewport === "mobile" ? { minHeight: 700 } : {}),
+            }}
           >
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                {blocks.map((block, index) => (
-                  <SortableBlockWrapper
-                    key={block.id}
-                    block={block}
-                    index={index}
-                    total={blocks.length}
-                    isSelected={selectedId === block.id}
-                    onSelect={() => setSelectedId(block.id)}
-                    onMoveUp={() => moveBlock(block.id, -1)}
-                    onMoveDown={() => moveBlock(block.id, 1)}
-                    onDuplicate={() => duplicateBlock(block.id)}
-                    onDelete={() => removeBlock(block.id)}
-                    onInlineEdit={(field, value) => handleInlineEdit(block.id, field, value)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-
-            {blocks.length === 0 && (
-              <div className="text-center py-24">
-                <Layers className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">Click blocks from the sidebar to add them</p>
+            {/* Phone notch for mobile */}
+            {viewport === "mobile" && (
+              <div className="flex justify-center py-2 bg-muted-foreground/10">
+                <div className="w-24 h-5 bg-muted-foreground/20 rounded-full" />
               </div>
             )}
+            <div className="space-y-4" style={viewport === "mobile" ? { padding: 0 } : {}}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                  {blocks.map((block, index) => (
+                    <SortableBlockWrapper
+                      key={block.id}
+                      block={block}
+                      index={index}
+                      total={blocks.length}
+                      isSelected={selectedId === block.id}
+                      onSelect={() => setSelectedId(block.id)}
+                      onMoveUp={() => moveBlock(block.id, -1)}
+                      onMoveDown={() => moveBlock(block.id, 1)}
+                      onDuplicate={() => duplicateBlock(block.id)}
+                      onDelete={() => removeBlock(block.id)}
+                      onInlineEdit={(field, value) => handleInlineEdit(block.id, field, value)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+
+              {blocks.length === 0 && (
+                <div className="text-center py-24">
+                  <Layers className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Click blocks from the sidebar to add them</p>
+                </div>
+              )}
+            </div>
           </div>
         </main>
 
