@@ -4,37 +4,36 @@ import {
   Layers, Layout,
 } from "lucide-react";
 import type { Block } from "./types";
+import InlineEditable from "./InlineEditable";
+import WalletConnectPreview from "./WalletConnectPreview";
 
 interface Props {
   block: Block;
+  onInlineEdit?: (field: string, value: string) => void;
 }
 
-const BlockPreview = memo(({ block }: Props) => {
+const BlockPreview = memo(({ block, onInlineEdit }: Props) => {
   const d = block.data;
+  const edit = onInlineEdit || (() => {});
+
+  const E = ({ value, field, className, tag, style }: { value: string; field: string; className?: string; tag?: "h2" | "h3" | "p" | "span" | "div"; style?: React.CSSProperties }) =>
+    onInlineEdit ? (
+      <InlineEditable value={value} field={field} onSave={edit} className={className} tag={tag} style={style} />
+    ) : (
+      <span className={className} style={style}>{value}</span>
+    );
 
   const previews: Record<string, React.ReactNode> = {
     hero: (
-      <div className="text-center py-12 px-6" style={{ backgroundColor: d.bgColor || undefined }}>
-        <h2 className="text-2xl font-bold text-foreground mb-2">{d.headline || "Your Project Name"}</h2>
-        <p className="text-muted-foreground text-sm mb-4">{d.subheadline || "Subheadline"}</p>
+      <div className="text-center py-12 px-6" style={{ backgroundColor: d.bgColor || undefined, backgroundImage: d.bgImage ? `url(${d.bgImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+        <E value={d.headline || "Your Project Name"} field="headline" className="text-2xl font-bold text-foreground mb-2 block" tag="h2" />
+        <E value={d.subheadline || "Subheadline"} field="subheadline" className="text-muted-foreground text-sm mb-4 block" tag="p" />
         <div className="inline-block gradient-primary px-6 py-2 rounded text-sm text-primary-foreground font-medium" style={{ backgroundColor: d.buttonColor || undefined }}>
-          {d.buttonText || "Get Started"}
+          <E value={d.buttonText || "Get Started"} field="buttonText" />
         </div>
       </div>
     ),
-    wallet: (
-      <div className="flex justify-center py-8">
-        <div className="glass rounded-lg p-4 w-64 space-y-2">
-          <p className="text-sm font-medium text-foreground text-center mb-3">Connect Wallet</p>
-          {(d.wallets || ["MetaMask", "Coinbase", "WalletConnect"]).map((w: string) => (
-            <div key={w} className="flex items-center gap-3 p-2 rounded bg-secondary hover:bg-secondary/80">
-              <Wallet className="w-4 h-4 text-primary" />
-              <span className="text-sm text-foreground">{w}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
+    wallet: <WalletConnectPreview />,
     tokenomics: (
       <div className="py-8 px-6 text-center">
         <h3 className="text-lg font-semibold text-foreground mb-4">Tokenomics</h3>
@@ -156,14 +155,14 @@ const BlockPreview = memo(({ block }: Props) => {
     ),
     footer: (
       <div className="py-6 px-6 text-center border-t border-border">
-        <p className="text-xs text-muted-foreground">{d.copyright || "© 2026 Your Project"}</p>
+        <E value={d.copyright || "© 2026 Your Project"} field="copyright" className="text-xs text-muted-foreground" tag="p" />
       </div>
     ),
     whitepaper: (
       <div className="py-8 flex justify-center">
         <div className="gradient-primary px-6 py-3 rounded flex items-center gap-2 text-sm font-medium text-primary-foreground">
           <FileText className="w-4 h-4" />
-          {d.buttonText || "Read Whitepaper"}
+          <E value={d.buttonText || "Read Whitepaper"} field="buttonText" />
         </div>
       </div>
     ),
