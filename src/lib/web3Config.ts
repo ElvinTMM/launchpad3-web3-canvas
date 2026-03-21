@@ -2,7 +2,8 @@ import { createConfig, http } from "wagmi";
 import { mainnet, bsc, polygon, base } from "wagmi/chains";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
-const WALLETCONNECT_PROJECT_ID = "f456c1a3a156fa401463b7d0ee899d5e";
+const WALLETCONNECT_PROJECT_ID =
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "c4f79cc821944d9680842e34466bfbd0";
 
 export const wagmiConfig = createConfig({
   chains: [mainnet, bsc, polygon, base],

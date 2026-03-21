@@ -16,7 +16,7 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: window.location.origin + "/dashboard" },
@@ -24,9 +24,20 @@ const Signup = () => {
     setLoading(false);
     if (error) {
       toast.error(error.message);
-    } else {
-      setShowConfirmation(true);
+      return;
     }
+
+    // Create trial subscription for new user
+    if (data.user) {
+      await supabase.from("subscriptions").insert({
+        user_id: data.user.id,
+        plan: "trial",
+        status: "active",
+        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+
+    setShowConfirmation(true);
   };
 
   if (showConfirmation) {
@@ -42,8 +53,8 @@ const Signup = () => {
             </div>
             <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
             <p className="text-muted-foreground">
-              We sent a confirmation link to <span className="text-foreground font-medium">{email}</span>.
-              Please verify your email to continue.
+              We sent a confirmation email to <span className="text-foreground font-medium">{email}</span>.
+              Please check your inbox and click the link to activate your account.
             </p>
             <Link to="/login">
               <Button variant="outline" className="w-full mt-4">Go to Sign In</Button>

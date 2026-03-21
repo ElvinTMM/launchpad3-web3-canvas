@@ -23,7 +23,7 @@ const Login = () => {
       return;
     }
     if (data.user && !data.user.email_confirmed_at) {
-      toast.error("Please verify your email first. Check your inbox for the confirmation link.");
+      toast.error("Please confirm your email first. Check your inbox.");
       await supabase.auth.signOut();
       return;
     }
