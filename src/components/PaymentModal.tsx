@@ -207,9 +207,11 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
               variant="gradient"
               className="w-full"
               onClick={handlePay}
-              disabled={isPending || isConfirming}
+              disabled={isPending || isConfirming || isConnecting || step === "connecting"}
             >
-              {!isConnected ? (
+              {step === "connecting" || isConnecting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting wallet...</>
+              ) : !isConnected ? (
                 <><Wallet className="w-4 h-4 mr-2" />Connect Wallet</>
               ) : !isOnBase ? (
                 <>Switch to Base Network</>
