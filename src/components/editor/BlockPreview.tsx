@@ -33,24 +33,7 @@ const BlockPreview = memo(({ block, onInlineEdit }: Props) => {
         </div>
       </div>
     ),
-    wallet: (
-      <div className="flex justify-center py-8">
-        <div className="glass rounded-lg p-4 w-64 space-y-2">
-          <p className="text-sm font-medium text-foreground text-center mb-3">Connect Wallet</p>
-          {(d.wallets || ["MetaMask", "Coinbase", "WalletConnect"]).map((w: string, i: number) => (
-            <div key={i} className="flex items-center gap-3 p-2 rounded bg-secondary hover:bg-secondary/80 cursor-pointer">
-              <Wallet className="w-4 h-4 text-primary" />
-              <span className="text-sm text-foreground">{w}</span>
-            </div>
-          ))}
-          {d.connectedAddress && (
-            <div className="mt-2 p-2 rounded bg-success/10 text-success text-xs text-center truncate">
-              Connected: {d.connectedAddress}
-            </div>
-          )}
-        </div>
-      </div>
-    ),
+    wallet: <WalletConnectPreview />,
     tokenomics: (
       <div className="py-8 px-6 text-center">
         <h3 className="text-lg font-semibold text-foreground mb-4">Tokenomics</h3>
