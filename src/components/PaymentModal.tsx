@@ -10,10 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Wallet, Check, Loader2 } from "lucide-react";
 import { injected } from "wagmi/connectors";
 
-// USDC on Base
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
-
-// Treasury address - replace with your actual address
 const TREASURY_ADDRESS = "0x2a613eeE5aA1f8A086c86f2EB80D662cDc87746b" as `0x${string}`;
 
 const ERC20_TRANSFER_ABI = [
@@ -50,35 +47,30 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
   const planName = preselectedPlan || "Pro";
   const isOnBase = chain?.id === base.id;
 
-  // Reset step when modal opens
   useEffect(() => {
     if (open) setStep("confirm");
   }, [open]);
 
-  // When wallet connects, auto-initiate payment
   useEffect(() => {
     if (isConnected && step === "connecting") {
       if (!isOnBase) {
         switchChain({ chainId: base.id });
       }
-      // Small delay to let chain switch settle
       const timer = setTimeout(() => initiatePayment(), 500);
       return () => clearTimeout(timer);
     }
   }, [isConnected, step, isOnBase]);
 
-  // Handle successful confirmation
   useEffect(() => {
     if (isSuccess && txHash) {
-      handleVerifyPayment(txHash);
+      handleVerifyPayment();
     }
   }, [isSuccess, txHash]);
 
-  const handleVerifyPayment = async (hash: string) => {
+  const handleVerifyPayment = async () => {
     try {
-      // Update subscription directly
       if (user) {
-        const { error: subError } = await supabase
+        await supabase
           .from("subscriptions")
           .upsert({
             user_id: user.id,
@@ -87,21 +79,9 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
             current_period_end: new Date(
               Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
             ).toISOString(),
+            trial_ends_at: null,
           }, { onConflict: "user_id" });
-
-        if (subError) {
-          // If upsert fails (no unique on user_id), try insert
-          await supabase.from("subscriptions").insert({
-            user_id: user.id,
-            plan: planName.toLowerCase(),
-            status: "active",
-            current_period_end: new Date(
-              Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
-            ).toISOString(),
-          });
-        }
       }
-
       setStep("success");
       toast.success(`Subscribed to ${planName}!`);
     } catch {
@@ -112,22 +92,18 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
 
   const initiatePayment = async () => {
     if (!isConnected || !address) return;
-
     if (chain?.id !== base.id) {
       switchChain({ chainId: base.id });
       return;
     }
-
     setStep("paying");
-
     try {
-      const amount = parseUnits(price.toString(), 6); // USDC = 6 decimals
+      const amount = parseUnits(price.toString(), 6);
       const data = encodeFunctionData({
         abi: ERC20_TRANSFER_ABI,
         functionName: "transfer",
         args: [TREASURY_ADDRESS, amount],
       });
-
       sendTransaction(
         { to: USDC_BASE, data },
         {
@@ -146,19 +122,16 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
   const handlePay = async () => {
     if (!isConnected) {
       setStep("connecting");
-      // Try MetaMask first, fall back to WalletConnect
       try {
         connect({ connector: injected() });
       } catch {
-        // injected will show WalletConnect modal if no injected wallet
+        // fallback
       }
       return;
     }
-
     if (!isOnBase) {
       switchChain({ chainId: base.id });
     }
-
     await initiatePayment();
   };
 
@@ -178,11 +151,10 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
             </div>
             <p className="text-foreground font-semibold">Welcome to {planName}!</p>
             <p className="text-sm text-muted-foreground">Your subscription is now active.</p>
-            <Button variant="gradient" onClick={() => onOpenChange(false)}>Done</Button>
+            <Button variant="gradient" onClick={() => { onOpenChange(false); window.location.href = "/dashboard"; }}>Go to Dashboard</Button>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Plan summary */}
             <div className="glass rounded-lg p-4 text-center">
               <p className="text-sm text-muted-foreground">{planName} Plan</p>
               <p className="text-3xl font-bold text-foreground mt-1">
@@ -191,7 +163,6 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
               <p className="text-xs text-muted-foreground mt-1">Paid in USDC on Base network</p>
             </div>
 
-            {/* Wallet status */}
             {isConnected && address && (
               <div className="text-xs text-muted-foreground bg-secondary rounded px-3 py-2">
                 <span className="text-foreground font-medium">Wallet:</span>{" "}
@@ -202,7 +173,6 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
               </div>
             )}
 
-            {/* Pay button */}
             <Button
               variant="gradient"
               className="w-full"

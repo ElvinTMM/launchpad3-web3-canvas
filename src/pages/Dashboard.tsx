@@ -13,6 +13,8 @@ type Site = Tables<"sites">;
 const Dashboard = () => {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [isPaidPlan, setIsPaidPlan] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -22,20 +24,41 @@ const Dashboard = () => {
       return;
     }
 
-    const checkSubscriptionAndLoadSites = async () => {
-      // Check for active subscription
+    const loadData = async () => {
+      // Check subscription
       const { data: subs } = await supabase
         .from("subscriptions")
-        .select("status")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("status", "active")
         .limit(1);
 
-      if (!subs || subs.length === 0) {
+      const sub = subs?.[0];
+
+      if (!sub) {
+        // No subscription at all → pricing
         navigate("/pricing");
         return;
       }
 
+      if (sub.plan === "trial") {
+        const trialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null;
+        if (trialEnd && trialEnd < new Date()) {
+          // Trial expired
+          navigate("/pricing");
+          return;
+        }
+        if (trialEnd) {
+          const days = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          setTrialDaysLeft(Math.max(0, days));
+        }
+      } else if (sub.status !== "active") {
+        navigate("/pricing");
+        return;
+      } else {
+        setIsPaidPlan(true);
+      }
+
+      // Load sites
       const { data, error } = await supabase
         .from("sites")
         .select("*")
@@ -48,7 +71,7 @@ const Dashboard = () => {
       setLoading(false);
     };
 
-    checkSubscriptionAndLoadSites();
+    loadData();
   }, [user, navigate]);
 
   const handleLogout = async () => {
@@ -85,6 +108,18 @@ const Dashboard = () => {
           </div>
         </div>
       </header>
+
+      {/* Trial banner */}
+      {trialDaysLeft !== null && !isPaidPlan && (
+        <div className="bg-primary/10 border-b border-primary/20 py-2 px-4 text-center text-sm">
+          <span className="text-foreground">
+            🎉 Free trial: <strong>{trialDaysLeft} days remaining</strong>.{" "}
+          </span>
+          <Link to="/pricing" className="text-primary font-medium hover:underline">
+            Upgrade to keep access →
+          </Link>
+        </div>
+      )}
 
       <main className="container max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
