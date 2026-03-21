@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
-import { Link } from "react-router-dom";
+import PaymentModal from "@/components/PaymentModal";
 
 const plans = [
   {
@@ -34,6 +35,14 @@ const plans = [
 ];
 
 const PricingSection = () => {
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>();
+
+  const handleUpgrade = (planName: string) => {
+    setSelectedPlan(planName);
+    setPaymentOpen(true);
+  };
+
   return (
     <section id="pricing" className="py-24 relative">
       <div className="container max-w-5xl mx-auto px-4">
@@ -86,18 +95,23 @@ const PricingSection = () => {
                 ))}
               </ul>
 
-              <Link to="/signup">
-                <Button
-                  variant={plan.featured ? "gradient" : "outline"}
-                  className="w-full"
-                >
-                  {plan.cta}
-                </Button>
-              </Link>
+              <Button
+                variant={plan.featured ? "gradient" : "outline"}
+                className="w-full"
+                onClick={() => handleUpgrade(plan.name)}
+              >
+                {plan.cta}
+              </Button>
             </motion.div>
           ))}
         </div>
       </div>
+
+      <PaymentModal
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        preselectedPlan={selectedPlan}
+      />
     </section>
   );
 };
