@@ -8,7 +8,20 @@ import {
   Undo2, Redo2,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { Reorder, AnimatePresence } from "framer-motion";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +30,7 @@ import type { Block, ViewportMode } from "@/components/editor/types";
 import { VIEWPORT_WIDTHS } from "@/components/editor/types";
 import { createBlock } from "@/components/editor/blockDefaults";
 import { useEditorHistory } from "@/components/editor/useEditorHistory";
-import BlockWrapper from "@/components/editor/BlockWrapper";
+import SortableBlockWrapper from "@/components/editor/SortableBlockWrapper";
 import PropertyPanel from "@/components/editor/PropertyPanel";
 
 const sidebarBlocks = [
@@ -45,8 +58,14 @@ const Editor = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewport, setViewport] = useState<ViewportMode>("desktop");
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) || null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
 
   const updateBlocks = useCallback((newBlocks: Block[]) => {
     push(newBlocks);
@@ -90,23 +109,48 @@ const Editor = () => {
     updateBlocks(blocks.map((b) => (b.id === id ? { ...b, data } : b)));
   }, [blocks, updateBlocks]);
 
-  const handleReorder = useCallback((newOrder: Block[]) => {
-    updateBlocks(newOrder);
-  }, [updateBlocks]);
+  const handleInlineEdit = useCallback((blockId: string, field: string, value: string) => {
+    const block = blocks.find((b) => b.id === blockId);
+    if (!block) return;
+    updateBlockData(blockId, { ...block.data, [field]: value });
+  }, [blocks, updateBlockData]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    updateBlocks(arrayMove(blocks, oldIndex, newIndex));
+  }, [blocks, updateBlocks]);
 
   const handleSave = useCallback(async () => {
-    if (!siteId || !user) {
+    if (!user) {
       toast.error("Please log in to save");
       return;
     }
+
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("sites")
-        .update({ content: blocks as any, updated_at: new Date().toISOString() })
-        .eq("id", siteId);
-      if (error) throw error;
-      toast.success("Saved!");
+      if (siteId === "new") {
+        const subdomain = "site-" + Date.now().toString(36);
+        const { error } = await supabase
+          .from("sites")
+          .insert({
+            name: (blocks.find(b => b.type === "hero")?.data?.headline) || "Untitled Site",
+            subdomain,
+            content: blocks as any,
+            user_id: user.id,
+          });
+        if (error) throw error;
+        toast.success("Site created!");
+      } else {
+        const { error } = await supabase
+          .from("sites")
+          .update({ content: blocks as any, updated_at: new Date().toISOString() })
+          .eq("id", siteId);
+        if (error) throw error;
+        toast.success("Saved!");
+      }
     } catch (err: any) {
       toast.error(err.message || "Save failed");
     } finally {
@@ -114,9 +158,66 @@ const Editor = () => {
     }
   }, [blocks, siteId, user]);
 
+  const handlePublish = useCallback(async () => {
+    if (!user) {
+      toast.error("Please log in to publish");
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      let currentSiteId = siteId;
+      const siteName = (blocks.find(b => b.type === "hero")?.data?.headline) || "Untitled Site";
+      const subdomain = siteName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 30) + "-" + Date.now().toString(36).slice(-4);
+
+      if (siteId === "new") {
+        const { data, error } = await supabase
+          .from("sites")
+          .insert({
+            name: siteName,
+            subdomain,
+            content: blocks as any,
+            user_id: user.id,
+            published: true,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        currentSiteId = data.id;
+      } else {
+        const { error } = await supabase
+          .from("sites")
+          .update({
+            content: blocks as any,
+            published: true,
+            subdomain,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", siteId);
+        if (error) throw error;
+      }
+
+      const liveUrl = `${subdomain}.launchpad3.io`;
+      toast.success(
+        <div className="space-y-1">
+          <p className="font-semibold">Published! 🚀</p>
+          <p className="text-xs text-muted-foreground">{liveUrl}</p>
+        </div>,
+        { duration: 8000 }
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Publish failed");
+    } finally {
+      setPublishing(false);
+    }
+  }, [blocks, siteId, user]);
+
   const web3Blocks = sidebarBlocks.filter((b) => b.category === "Web3");
   const standardBlocks = sidebarBlocks.filter((b) => b.category === "Standard");
-
   const viewportWidth = VIEWPORT_WIDTHS[viewport];
 
   return (
@@ -169,9 +270,9 @@ const Editor = () => {
             <Save className="w-4 h-4" />
             {saving ? "Saving..." : "Save"}
           </Button>
-          <Button variant="gradient" size="sm" onClick={() => toast.success("Published!")}>
+          <Button variant="gradient" size="sm" onClick={handlePublish} disabled={publishing}>
             <Upload className="w-4 h-4" />
-            Publish
+            {publishing ? "Publishing..." : "Publish"}
           </Button>
         </div>
       </header>
@@ -220,10 +321,15 @@ const Editor = () => {
             className="mx-auto transition-all duration-300 space-y-4"
             style={{ maxWidth: viewportWidth }}
           >
-            <Reorder.Group axis="y" values={blocks} onReorder={handleReorder} className="space-y-4">
-              {blocks.map((block, index) => (
-                <Reorder.Item key={block.id} value={block} className="list-none">
-                  <BlockWrapper
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, index) => (
+                  <SortableBlockWrapper
+                    key={block.id}
                     block={block}
                     index={index}
                     total={blocks.length}
@@ -233,10 +339,11 @@ const Editor = () => {
                     onMoveDown={() => moveBlock(block.id, 1)}
                     onDuplicate={() => duplicateBlock(block.id)}
                     onDelete={() => removeBlock(block.id)}
+                    onInlineEdit={(field, value) => handleInlineEdit(block.id, field, value)}
                   />
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
+                ))}
+              </SortableContext>
+            </DndContext>
 
             {blocks.length === 0 && (
               <div className="text-center py-24">

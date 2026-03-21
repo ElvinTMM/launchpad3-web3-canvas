@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ChevronUp, ChevronDown, Copy, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Copy, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Block } from "./types";
 import BlockPreview from "./BlockPreview";
@@ -14,11 +14,14 @@ interface Props {
   onMoveDown: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onInlineEdit?: (field: string, value: string) => void;
+  dragListeners?: Record<string, any>;
 }
 
 const BlockWrapper = memo(({
   block, index, total, isSelected, onSelect,
   onMoveUp, onMoveDown, onDuplicate, onDelete,
+  onInlineEdit, dragListeners,
 }: Props) => {
   return (
     <div
@@ -32,6 +35,16 @@ const BlockWrapper = memo(({
         onSelect();
       }}
     >
+      {/* Drag handle */}
+      <div
+        className="absolute -left-9 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-grab active:cursor-grabbing"
+        {...dragListeners}
+      >
+        <div className="h-7 w-7 flex items-center justify-center bg-card border border-border rounded">
+          <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+        </div>
+      </div>
+
       {/* Hover controls */}
       <div className="absolute -right-11 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-10">
         <Button variant="ghost" size="icon" className="h-7 w-7 bg-card border border-border" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={index === 0}>
@@ -53,7 +66,7 @@ const BlockWrapper = memo(({
         <span className="text-[10px] font-medium text-muted-foreground bg-card/80 px-1.5 py-0.5 rounded">{block.label}</span>
       </div>
 
-      <BlockPreview block={block} />
+      <BlockPreview block={block} onInlineEdit={onInlineEdit} />
     </div>
   );
 });
