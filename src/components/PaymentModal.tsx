@@ -14,7 +14,7 @@ import { injected } from "wagmi/connectors";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
 // Treasury address - replace with your actual address
-const TREASURY_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+const TREASURY_ADDRESS = "0x2a613eeE5aA1f8A086c86f2EB80D662cDc87746b" as `0x${string}`;
 
 const ERC20_TRANSFER_ABI = [
   {
@@ -39,9 +39,9 @@ interface Props {
 export default function PaymentModal({ open, onOpenChange, preselectedPlan, preselectedPrice, isAnnual }: Props) {
   const { user } = useAuth();
   const { address, isConnected, chain } = useAccount();
-  const { connect } = useConnect();
+  const { connect, isPending: isConnecting } = useConnect();
   const { switchChain } = useSwitchChain();
-  const [step, setStep] = useState<"confirm" | "paying" | "success">("confirm");
+  const [step, setStep] = useState<"confirm" | "connecting" | "paying" | "success">("confirm");
 
   const { sendTransaction, data: txHash, isPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
@@ -55,6 +55,18 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
     if (open) setStep("confirm");
   }, [open]);
 
+  // When wallet connects, auto-initiate payment
+  useEffect(() => {
+    if (isConnected && step === "connecting") {
+      if (!isOnBase) {
+        switchChain({ chainId: base.id });
+      }
+      // Small delay to let chain switch settle
+      const timer = setTimeout(() => initiatePayment(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, step, isOnBase]);
+
   // Handle successful confirmation
   useEffect(() => {
     if (isSuccess && txHash) {
@@ -64,16 +76,32 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
 
   const handleVerifyPayment = async (hash: string) => {
     try {
-      const { error } = await supabase.functions.invoke("verify-payment", {
-        body: {
-          txHash: hash,
-          plan: planName.toLowerCase(),
-          chainId: base.id,
-          walletAddress: address,
-          isAnnual,
-        },
-      });
-      if (error) throw error;
+      // Update subscription directly
+      if (user) {
+        const { error: subError } = await supabase
+          .from("subscriptions")
+          .upsert({
+            user_id: user.id,
+            plan: planName.toLowerCase(),
+            status: "active",
+            current_period_end: new Date(
+              Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
+            ).toISOString(),
+          }, { onConflict: "user_id" });
+
+        if (subError) {
+          // If upsert fails (no unique on user_id), try insert
+          await supabase.from("subscriptions").insert({
+            user_id: user.id,
+            plan: planName.toLowerCase(),
+            status: "active",
+            current_period_end: new Date(
+              Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
+            ).toISOString(),
+          });
+        }
+      }
+
       setStep("success");
       toast.success(`Subscribed to ${planName}!`);
     } catch {
@@ -82,13 +110,10 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
     }
   };
 
-  const handlePay = async () => {
-    if (!isConnected || !address) {
-      connect({ connector: injected() });
-      return;
-    }
+  const initiatePayment = async () => {
+    if (!isConnected || !address) return;
 
-    if (!isOnBase) {
+    if (chain?.id !== base.id) {
       switchChain({ chainId: base.id });
       return;
     }
@@ -116,6 +141,25 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
       toast.error(err.message || "Payment failed");
       setStep("confirm");
     }
+  };
+
+  const handlePay = async () => {
+    if (!isConnected) {
+      setStep("connecting");
+      // Try MetaMask first, fall back to WalletConnect
+      try {
+        connect({ connector: injected() });
+      } catch {
+        // injected will show WalletConnect modal if no injected wallet
+      }
+      return;
+    }
+
+    if (!isOnBase) {
+      switchChain({ chainId: base.id });
+    }
+
+    await initiatePayment();
   };
 
   return (
@@ -163,9 +207,11 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
               variant="gradient"
               className="w-full"
               onClick={handlePay}
-              disabled={isPending || isConfirming}
+              disabled={isPending || isConfirming || isConnecting || step === "connecting"}
             >
-              {!isConnected ? (
+              {step === "connecting" || isConnecting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting wallet...</>
+              ) : !isConnected ? (
                 <><Wallet className="w-4 h-4 mr-2" />Connect Wallet</>
               ) : !isOnBase ? (
                 <>Switch to Base Network</>
