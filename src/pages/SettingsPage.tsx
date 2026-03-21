@@ -50,7 +50,7 @@ const SettingsPage = () => {
         </div>
       </main>
 
-      <PaymentModal open={paymentOpen} onOpenChange={setPaymentOpen} />
+      <PaymentModal open={paymentOpen} onOpenChange={setPaymentOpen} preselectedPlan="Pro" preselectedPrice={79} />
     </div>
   );
 };
