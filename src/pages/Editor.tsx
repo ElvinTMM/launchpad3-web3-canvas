@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Rocket, ArrowLeft, Eye, Save, Upload,
@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRequireSubscription } from "@/hooks/useRequireSubscription";
 
 import type { Block, ViewportMode } from "@/components/editor/types";
 import { VIEWPORT_WIDTHS } from "@/components/editor/types";
@@ -51,14 +52,35 @@ const sidebarBlocks = [
 const Editor = () => {
   const { id: siteId } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { blocks, push, undo, redo, canUndo, canRedo } = useEditorHistory([
+  const { loading: subLoading, hasAccess } = useRequireSubscription();
+  const { blocks, push, replace, undo, redo, canUndo, canRedo } = useEditorHistory([
     createBlock("hero"),
   ]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [siteLoaded, setSiteLoaded] = useState(false);
   const [viewport, setViewport] = useState<ViewportMode>("desktop");
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  useEffect(() => {
+    if (!user || siteId === "new") {
+      setSiteLoaded(true);
+      return;
+    }
+    const loadSite = async () => {
+      const { data, error } = await supabase
+        .from("sites")
+        .select("content")
+        .eq("id", siteId)
+        .single();
+      if (!error && data?.content && Array.isArray(data.content)) {
+        replace(data.content as Block[]);
+      }
+      setSiteLoaded(true);
+    };
+    loadSite();
+  }, [siteId, user, replace]);
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) || null;
 
@@ -220,24 +242,32 @@ const Editor = () => {
   const standardBlocks = sidebarBlocks.filter((b) => b.category === "Standard");
   const viewportWidth = VIEWPORT_WIDTHS[viewport];
 
+  if (subLoading || !hasAccess) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-black">
+        <div className="animate-spin rounded-full h-9 w-9 border-2 border-[#222222] border-t-[#06b6d4]" />
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <header className="h-14 border-b border-border glass-strong flex items-center justify-between px-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
+    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
+      <header className="h-[52px] border-b border-[#222222] bg-[#0a0a0a]/95 backdrop-blur-md flex items-center justify-between px-3 md:px-4 flex-shrink-0 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Link to="/dashboard">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
-          <div className="flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Editor</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-[#111111] border border-[#222222]">
+              <Rocket className="w-4 h-4 text-[#06b6d4]" />
+            </div>
+            <span className="text-sm font-semibold text-white truncate">Editor</span>
           </div>
         </div>
 
-        {/* Viewport toggle */}
-        <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+        <div className="flex items-center gap-0.5 rounded-lg p-0.5 bg-[#111111] border border-[#222222]">
           {([
             { mode: "desktop" as const, icon: Monitor },
             { mode: "tablet" as const, icon: Tablet },
@@ -245,9 +275,11 @@ const Editor = () => {
           ]).map(({ mode, icon: Icon }) => (
             <Button
               key={mode}
-              variant={viewport === mode ? "default" : "ghost"}
+              variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className={`h-8 w-8 rounded-md transition-all ${
+                viewport === mode ? "bg-[#1a1a1a] text-white shadow-sm" : "text-[#888888] hover:text-white"
+              }`}
               onClick={() => setViewport(mode)}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -255,73 +287,77 @@ const Editor = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hidden sm:flex" onClick={undo} disabled={!canUndo} title="Undo">
             <Undo2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hidden sm:flex" onClick={redo} disabled={!canRedo} title="Redo">
             <Redo2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="hidden md:flex rounded-lg text-[#888888]">
             <Eye className="w-4 h-4" />
             Preview
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleSave} disabled={saving}>
+          <Button variant="secondary" size="sm" className="rounded-lg font-medium" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4" />
-            {saving ? "Saving..." : "Save"}
+            {saving ? "..." : "Save"}
           </Button>
-          <Button variant="gradient" size="sm" onClick={handlePublish} disabled={publishing}>
+          <Button variant="gradient" size="sm" className="rounded-lg font-semibold" onClick={handlePublish} disabled={publishing}>
             <Upload className="w-4 h-4" />
-            {publishing ? "Publishing..." : "Publish"}
+            {publishing ? "..." : "Publish"}
           </Button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar – block library */}
-        <aside className="w-60 border-r border-border bg-card/50 overflow-y-auto flex-shrink-0 p-4">
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        <aside className="w-56 md:w-60 border-r border-[#222222] bg-[#0c0c0c] overflow-y-auto flex-shrink-0 p-3">
           <div className="mb-6">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Web3 Blocks</h3>
-            <div className="space-y-1">
+            <h3 className="text-[10px] font-semibold text-[#666666] uppercase tracking-widest mb-3 px-1">Web3</h3>
+            <div className="space-y-0.5">
               {web3Blocks.map((block) => (
                 <button
                   key={block.type}
+                  type="button"
                   onClick={() => addBlock(block.type)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-foreground hover:bg-secondary transition-colors group"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-[#e5e5e5] hover:bg-[#161616] border border-transparent hover:border-[#2a2a2a] transition-all duration-200 group"
                 >
-                  <block.icon className="w-4 h-4 text-primary group-hover:scale-105 transition-transform" />
-                  {block.label}
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#111111] border border-[#222222] group-hover:border-[#333333] group-hover:shadow-[0_0_16px_-4px_rgba(6,182,212,0.25)] transition-all">
+                    <block.icon className="w-4 h-4 text-[#06b6d4]" />
+                  </span>
+                  <span className="text-left font-medium truncate">{block.label}</span>
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Standard</h3>
-            <div className="space-y-1">
+            <h3 className="text-[10px] font-semibold text-[#666666] uppercase tracking-widest mb-3 px-1">Standard</h3>
+            <div className="space-y-0.5">
               {standardBlocks.map((block) => (
                 <button
                   key={block.type}
+                  type="button"
                   onClick={() => addBlock(block.type)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-foreground hover:bg-secondary transition-colors group"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-[#e5e5e5] hover:bg-[#161616] border border-transparent hover:border-[#2a2a2a] transition-all duration-200 group"
                 >
-                  <block.icon className="w-4 h-4 text-accent group-hover:scale-105 transition-transform" />
-                  {block.label}
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#111111] border border-[#222222] group-hover:border-[#333333] group-hover:shadow-[0_0_16px_-4px_rgba(124,58,237,0.2)] transition-all">
+                    <block.icon className="w-4 h-4 text-[#a78bfa]" />
+                  </span>
+                  <span className="text-left font-medium truncate">{block.label}</span>
                 </button>
               ))}
             </div>
           </div>
         </aside>
 
-        {/* Canvas */}
         <main
-          className="flex-1 overflow-y-auto dot-grid p-6"
+          className="flex-1 overflow-y-auto bg-[#050505] dot-grid p-4 md:p-6 transition-colors duration-300"
           onClick={() => setSelectedId(null)}
         >
           <div
-            className={`mx-auto transition-all duration-300 ${
+            className={`mx-auto transition-all duration-500 ease-out ${
               viewport === "mobile"
-                ? "border-[12px] border-muted-foreground/20 rounded-[2.5rem] shadow-2xl bg-background overflow-hidden"
-                : ""
+                ? "border-[12px] border-[#222222] rounded-[2.5rem] shadow-[0_32px_64px_-24px_rgba(0,0,0,0.9)] bg-black overflow-hidden"
+                : "rounded-xl border border-[#222222] bg-[#0a0a0a] shadow-[0_24px_48px_-32px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.04)]"
             }`}
             style={{
               maxWidth: viewport === "mobile" ? viewportWidth + 24 : viewportWidth,
@@ -330,11 +366,11 @@ const Editor = () => {
           >
             {/* Phone notch for mobile */}
             {viewport === "mobile" && (
-              <div className="flex justify-center py-2 bg-muted-foreground/10">
-                <div className="w-24 h-5 bg-muted-foreground/20 rounded-full" />
+              <div className="flex justify-center py-2 bg-[#111111]">
+                <div className="w-24 h-5 bg-[#222222] rounded-full" />
               </div>
             )}
-            <div className="space-y-4" style={viewport === "mobile" ? { padding: 0 } : {}}>
+            <div className={`space-y-4 ${viewport === "mobile" ? "" : "p-4 md:p-6"}`}>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}

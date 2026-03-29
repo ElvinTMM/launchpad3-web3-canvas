@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useAccount, useConnect, useSwitchChain, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useSwitchChain, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { parseUnits, encodeFunctionData } from "viem";
 import { base } from "wagmi/chains";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Wallet, Check, Loader2 } from "lucide-react";
-import { injected } from "wagmi/connectors";
 
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 const TREASURY_ADDRESS = "0x2a613eeE5aA1f8A086c86f2EB80D662cDc87746b" as `0x${string}`;
@@ -36,7 +36,7 @@ interface Props {
 export default function PaymentModal({ open, onOpenChange, preselectedPlan, preselectedPrice, isAnnual }: Props) {
   const { user } = useAuth();
   const { address, isConnected, chain } = useAccount();
-  const { connect, isPending: isConnecting } = useConnect();
+  const { open: openWeb3Modal } = useWeb3Modal();
   const { switchChain } = useSwitchChain();
   const [step, setStep] = useState<"confirm" | "connecting" | "paying" | "success">("confirm");
 
@@ -122,11 +122,7 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
   const handlePay = async () => {
     if (!isConnected) {
       setStep("connecting");
-      try {
-        connect({ connector: injected() });
-      } catch {
-        // fallback
-      }
+      openWeb3Modal();
       return;
     }
     if (!isOnBase) {
@@ -137,49 +133,49 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-[#111111] border-[#222222] text-white">
         <DialogHeader>
-          <DialogTitle className="text-foreground">
-            {step === "success" ? "Payment Successful!" : `Upgrade to ${planName}`}
+          <DialogTitle className="text-white text-lg font-semibold">
+            {step === "success" ? "Payment successful" : `Upgrade to ${planName}`}
           </DialogTitle>
         </DialogHeader>
 
         {step === "success" ? (
           <div className="text-center py-6 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8 text-success" />
+            <div className="w-16 h-16 rounded-full bg-[#06b6d4]/15 flex items-center justify-center mx-auto border border-[#222222]">
+              <Check className="w-8 h-8 text-[#06b6d4]" />
             </div>
-            <p className="text-foreground font-semibold">Welcome to {planName}!</p>
-            <p className="text-sm text-muted-foreground">Your subscription is now active.</p>
-            <Button variant="gradient" onClick={() => { onOpenChange(false); window.location.href = "/dashboard"; }}>Go to Dashboard</Button>
+            <p className="text-white font-semibold">Welcome to {planName}!</p>
+            <p className="text-sm text-[#888888]">Your subscription is now active.</p>
+            <Button variant="gradient" className="rounded-lg font-semibold" onClick={() => { onOpenChange(false); window.location.href = "/dashboard"; }}>Go to dashboard</Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="glass rounded-lg p-4 text-center">
-              <p className="text-sm text-muted-foreground">{planName} Plan</p>
-              <p className="text-3xl font-bold text-foreground mt-1">
-                €{price} <span className="text-sm font-normal text-muted-foreground">{isAnnual ? "/yr" : "/mo"}</span>
+            <div className="rounded-xl border border-[#222222] bg-[#0c0c0c] p-4 text-center">
+              <p className="text-sm text-[#888888]">{planName} plan</p>
+              <p className="text-3xl font-semibold text-white mt-1">
+                {price} USDC <span className="text-sm font-normal text-[#666666]">one-time</span>
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Paid in USDC on Base network</p>
+              <p className="text-xs text-[#666666] mt-1">USDC on Base (chain 8453)</p>
             </div>
 
             {isConnected && address && (
-              <div className="text-xs text-muted-foreground bg-secondary rounded px-3 py-2">
-                <span className="text-foreground font-medium">Wallet:</span>{" "}
+              <div className="text-xs text-[#888888] bg-[#0c0c0c] border border-[#222222] rounded-lg px-3 py-2">
+                <span className="text-white font-medium">Wallet:</span>{" "}
                 {address.slice(0, 6)}...{address.slice(-4)}
                 {!isOnBase && (
-                  <span className="text-warning ml-2">⚠ Switch to Base network</span>
+                  <span className="text-amber-400 ml-2">Switch to Base</span>
                 )}
               </div>
             )}
 
             <Button
               variant="gradient"
-              className="w-full"
+              className="w-full rounded-lg font-semibold"
               onClick={handlePay}
-              disabled={isPending || isConfirming || isConnecting || step === "connecting"}
+              disabled={isPending || isConfirming || step === "connecting"}
             >
-              {step === "connecting" || isConnecting ? (
+              {step === "connecting" ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting wallet...</>
               ) : !isConnected ? (
                 <><Wallet className="w-4 h-4 mr-2" />Connect Wallet</>
@@ -188,12 +184,12 @@ export default function PaymentModal({ open, onOpenChange, preselectedPlan, pres
               ) : isPending || isConfirming ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{isConfirming ? "Confirming..." : "Approve in wallet..."}</>
               ) : (
-                <>Pay €{price} USDC</>
+                <>Pay {price} USDC</>
               )}
             </Button>
 
-            <p className="text-[10px] text-center text-muted-foreground">
-              Powered by WalletConnect · USDC on Base
+            <p className="text-[10px] text-center text-[#666666]">
+              WalletConnect · USDC on Base
             </p>
           </div>
         )}

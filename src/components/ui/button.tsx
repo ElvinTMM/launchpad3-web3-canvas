@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-[#222222] bg-transparent text-foreground hover:bg-[#161616] hover:border-[#333333]",
+        secondary: "bg-[#161616] text-foreground border border-[#222222] hover:bg-[#1a1a1a]",
+        ghost: "text-muted-foreground hover:text-foreground hover:bg-[#161616]",
         link: "text-primary underline-offset-4 hover:underline",
-        gradient: "gradient-primary text-primary-foreground hover:opacity-90 glow-primary",
-        hero: "gradient-primary text-primary-foreground hover:opacity-90 glow-primary text-base font-semibold",
+        gradient: "gradient-primary text-white shadow-lg hover:opacity-95 hover-glow-button font-semibold",
+        hero: "gradient-primary text-white shadow-lg hover:opacity-95 hover-glow-button text-base font-semibold",
       },
       size: {
         default: "h-10 px-4 py-2",

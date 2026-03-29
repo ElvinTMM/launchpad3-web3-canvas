@@ -19,7 +19,9 @@ const Signup = () => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin + "/dashboard" },
+      options: {
+        emailRedirectTo: window.location.origin + "/dashboard",
+      },
     });
     setLoading(false);
     if (error) {
@@ -27,38 +29,31 @@ const Signup = () => {
       return;
     }
 
-    // Create trial subscription for new user
-    if (data.user) {
-      await supabase.from("subscriptions").insert({
-        user_id: data.user.id,
-        plan: "trial",
-        status: "active",
-        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-    }
-
     setShowConfirmation(true);
   };
 
   if (showConfirmation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background relative">
-        <div className="absolute inset-0 dot-grid opacity-20" />
-        <div className="absolute top-1/3 right-1/3 w-80 h-80 rounded-full bg-accent/10 blur-[120px]" />
+      <div className="min-h-screen flex items-center justify-center bg-black relative">
+        <div className="absolute inset-0 raycast-grid opacity-30 pointer-events-none" />
+        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-[#06b6d4]/5 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="w-full max-w-sm mx-auto px-4 relative z-10 text-center">
-          <div className="glass rounded-lg p-8 space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Mail className="w-8 h-8 text-primary" />
+        <div className="w-full max-w-[400px] mx-auto px-4 relative z-10 text-center">
+          <div className="auth-card-border">
+            <div className="rounded-[11px] bg-[#111111] border border-[#1a1a1a] p-10 space-y-5">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-[#161616] border border-[#222222] flex items-center justify-center">
+                <Mail className="w-8 h-8 text-[#06b6d4]" />
+              </div>
+              <h1 className="text-xl font-semibold text-white leading-snug">Check your email to confirm your account</h1>
+              <p className="text-[#888888] text-sm leading-relaxed">
+                We sent a confirmation email to <span className="text-white font-medium">{email}</span>. Click the link, then sign in.
+              </p>
+              <Link to="/login">
+                <Button variant="outline" className="w-full h-11 rounded-lg font-medium mt-2">
+                  Go to sign in
+                </Button>
+              </Link>
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
-            <p className="text-muted-foreground">
-              We sent a confirmation email to <span className="text-foreground font-medium">{email}</span>.
-              Please check your inbox and click the link to activate your account.
-            </p>
-            <Link to="/login">
-              <Button variant="outline" className="w-full mt-4">Go to Sign In</Button>
-            </Link>
           </div>
         </div>
       </div>
@@ -66,41 +61,54 @@ const Signup = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative">
-      <div className="absolute inset-0 dot-grid opacity-20" />
-      <div className="absolute top-1/3 right-1/3 w-80 h-80 rounded-full bg-accent/10 blur-[120px]" />
+    <div className="min-h-screen flex items-center justify-center bg-black relative">
+      <div className="absolute inset-0 raycast-grid opacity-30 pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-[#7c3aed]/8 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="w-full max-w-sm mx-auto px-4 relative z-10">
+      <div className="w-full max-w-[400px] mx-auto px-4 relative z-10">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <Rocket className="w-6 h-6 text-primary" />
-            <span className="font-bold text-xl text-foreground">LaunchPad3</span>
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#111111] border border-[#222222]">
+              <Rocket className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-semibold text-lg text-white tracking-tight">LaunchPad3</span>
           </Link>
-          <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Start your 14-day free trial</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Create your account</h1>
+          <p className="text-sm text-[#888888] mt-2">14-day free trial · No card required</p>
         </div>
 
-        <form onSubmit={handleSignup} className="glass rounded-lg p-6 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <Button type="submit" variant="gradient" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Start Free Trial"}
-          </Button>
-        </form>
+        <div className="auth-card-border">
+          <form onSubmit={handleSignup} className="rounded-[11px] bg-[#111111] border border-[#1a1a1a] p-8 space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-[#a3a3a3] text-sm font-medium">
+                Email
+              </Label>
+              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-[#a3a3a3] text-sm font-medium">
+                Password
+              </Label>
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+            <Button type="submit" variant="gradient" className="w-full h-11 rounded-lg font-semibold mt-2" disabled={loading}>
+              {loading ? "Creating account..." : "Start free trial"}
+            </Button>
+          </form>
+        </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-4">
+        <p className="text-center text-sm text-[#888888] mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+          <Link to="/login" className="text-[#06b6d4] font-medium hover:underline">
+            Sign in
+          </Link>
         </p>
 
-        <Link to="/" className="flex items-center justify-center gap-1 text-sm text-muted-foreground mt-6 hover:text-foreground transition-colors">
-          <ArrowLeft className="w-3 h-3" />
+        <Link
+          to="/"
+          className="flex items-center justify-center gap-1.5 text-sm text-[#666666] mt-8 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
           Back to home
         </Link>
       </div>

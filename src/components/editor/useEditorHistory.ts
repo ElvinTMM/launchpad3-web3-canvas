@@ -16,6 +16,12 @@ export function useEditorHistory(initial: Block[]) {
     setIndex((i) => i + 1);
   }, [index]);
 
+  const replace = useCallback((blocks: Block[]) => {
+    const cloned = JSON.parse(JSON.stringify(blocks));
+    setHistory([cloned]);
+    setIndex(0);
+  }, []);
+
   const undo = useCallback(() => {
     setIndex((i) => Math.max(0, i - 1));
   }, []);
@@ -42,5 +48,5 @@ export function useEditorHistory(initial: Block[]) {
     return () => window.removeEventListener("keydown", handler);
   }, [undo, redo]);
 
-  return { blocks: current, push, undo, redo, canUndo, canRedo };
+  return { blocks: current, push, replace, undo, redo, canUndo, canRedo };
 }

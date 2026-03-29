@@ -5,48 +5,62 @@ import { Label } from "@/components/ui/label";
 import { Rocket, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import PaymentModal from "@/components/PaymentModal";
+import { useRequireSubscription } from "@/hooks/useRequireSubscription";
 
 const SettingsPage = () => {
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const { loading, hasAccess } = useRequireSubscription();
+
+  if (loading || !hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="animate-spin rounded-full h-9 w-9 border-2 border-[#222222] border-t-[#06b6d4]" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border glass-strong sticky top-0 z-50">
+    <div className="min-h-screen bg-black text-white">
+      <header className="border-b border-[#222222] bg-black/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="container max-w-3xl mx-auto px-4 h-16 flex items-center gap-3">
           <Link to="/dashboard">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="rounded-lg">
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
-          <Rocket className="w-5 h-5 text-primary" />
-          <span className="font-bold text-foreground">Settings</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#111111] border border-[#222222]">
+            <Rocket className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-semibold">Settings</span>
         </div>
       </header>
 
       <main className="container max-w-3xl mx-auto px-4 py-8 space-y-8">
-        <div className="glass rounded-lg p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Site Settings</h2>
+        <div className="surface-card p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Site Settings</h2>
           <div className="space-y-2">
-            <Label>Site Name</Label>
+            <Label className="text-[#a3a3a3]">Site Name</Label>
             <Input placeholder="My DeFi Project" />
           </div>
           <div className="space-y-2">
-            <Label>Subdomain</Label>
+            <Label className="text-[#a3a3a3]">Subdomain</Label>
             <div className="flex items-center gap-2">
               <Input placeholder="myproject" />
-              <span className="text-sm text-muted-foreground whitespace-nowrap">.launchpad3.io</span>
+              <span className="text-sm text-[#666666] whitespace-nowrap">.launchpad3.io</span>
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Custom Domain</Label>
+            <Label className="text-[#a3a3a3]">Custom Domain</Label>
             <Input placeholder="www.yourproject.com" />
           </div>
         </div>
 
-        <div className="glass rounded-lg p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
-          <p className="text-sm text-muted-foreground">You are on the <span className="text-primary font-medium">Free Trial</span> — 12 days remaining.</p>
-          <Button variant="gradient" onClick={() => setPaymentOpen(true)}>Upgrade Plan</Button>
+        <div className="surface-card p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Subscription</h2>
+          <p className="text-sm text-[#888888]">
+            You are on the <span className="text-[#06b6d4] font-medium">Free Trial</span> — upgrade anytime.
+          </p>
+          <Button variant="gradient" className="rounded-lg font-semibold" onClick={() => setPaymentOpen(true)}>Upgrade plan</Button>
         </div>
       </main>
 
